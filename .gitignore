@@ -1,0 +1,6 @@
+/project_backup/
+
+.idea
+
+# .env files
+*.env
