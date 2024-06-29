@@ -2,6 +2,7 @@ import os
 
 import discord
 import dotenv
+from discord import app_commands
 from discord.ext.commands import Bot
 from discord.ext.commands.context import Context
 
@@ -9,13 +10,46 @@ import text_classification
 from text_gen import generate_text
 
 # Load the environment variables from .env file
-dotenv.load_dotenv()
+dotenv.load_dotenv('.env')
+
+# Get guild ID from environment variable and make it into an integer
+GUILD_ID = os.getenv('GUILD_ID')
+GUILD_ID = int(GUILD_ID) if GUILD_ID is not None else None
+
+if GUILD_ID is None:
+    print('GUILD_ID environment variable not found!')
+    exit(1)
 
 BOT_PREFIX = "!"
 
 intents = discord.Intents.default()
 intents.message_content = True
 bot = Bot(command_prefix=BOT_PREFIX, intents=intents)
+tree = bot.tree
+
+intents = discord.Intents.default()
+intents.message_content = True
+
+
+async def load_tree():
+    try:
+        await bot.load_extension('tree_cog')
+        print('Loaded tree cog')
+    except Exception as e:
+        print(f'Error while loading tree cog: {e}')
+        exit()
+
+
+class MyClient(discord.Client):
+    def __init__(self, *, d_intents: discord.Intents):
+        super().__init__(intents=d_intents)
+        self.tree = app_commands.CommandTree(self)
+
+    async def setup_hook(self):
+        await self.tree.sync()
+
+
+client = MyClient(d_intents=intents)
 
 # Get the bot token from environment variable
 BOT_TOKEN = os.getenv('DISCORD_BOT_TOKEN')
@@ -198,9 +232,60 @@ async def emotion_check(emotion) -> str:
         return 'I hope you feel better soon. 🤔'
 
 
-# Event to confirm bot is ready
+# Fun command group
+fun = app_commands.Group(name="fun", description="Fun commands")
+
+
+@fun.command(name="coin", description="Flip a coin")
+async def coin(interaction: discord.Interaction):
+    import random
+    result = random.choice(["Heads", "Tails"])
+    # noinspection PyUnresolvedReferences
+    await interaction.response.send_message(f'The coin landed on: {result}')
+
+
+@fun.command(name="roll", description="Roll a die")
+async def roll(interaction: discord.Interaction, sides: int = 6):
+    import random
+    result = random.randint(1, sides)
+    # noinspection PyUnresolvedReferences
+    await interaction.response.send_message(f'You rolled a {result} on a {sides}-sided die')
+
+
+# Add the command groups to the bot
+client.tree.add_command(fun)
+
+
+@bot.tree.command(name="hello_app", description="Say hello with an application command")
+@app_commands.guilds(discord.Object(id=GUILD_ID))
+async def hello_app(interaction: discord.Interaction):
+    # noinspection PyUnresolvedReferences
+    await interaction.response.send_message(f"Hello, {interaction.user.mention}! This is an application command.")
+
+
 @bot.event
 async def on_ready():
+    print('Waiting for bot to be ready')
+    # Wait until the bot is fully connected to Discord
+    await bot.wait_until_ready()
+
+    # Load the tree cog
+    try:
+        print('Loading tree cog')
+        await load_tree()
+    except Exception as e:
+        print(f'Error while loading tree cog: {e}')
+        exit(1)
+
+    # Force the bot to sync the tree
+    try:
+        await bot.tree.sync(guild=discord.Object(id=GUILD_ID))
+        print("Command tree synced successfully!")
+    except Exception as e:
+        print(f'Error while syncing tree: {e}')
+        exit(1)
+
+    # Print that the bot is connected
     print(f'{bot.user} has connected to Discord!')
 
 
