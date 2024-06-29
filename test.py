@@ -4,7 +4,10 @@ from transformers import pipeline
 messages = [
     {"role": "user", "content": "Who are you?"},
 ]
-pipe = pipeline("text-generation", model="IndexTeam/Index-1.9B-Chat", trust_remote_code=True)
+model_group = "IndexTeam"
+model_name = "Index-1.9B-Chat"
+model = f'{model_group}/{model_name}'
+pipe = pipeline("text-generation", model=model, trust_remote_code=True)
 
 result = pipe(messages)
 

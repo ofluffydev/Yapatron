@@ -2,9 +2,10 @@
 from transformers import pipeline
 
 
-def generate_text(prompt):
+def generate_text(prompt, max_length=1000):
     """
     Generate text based on a prompt
+    :param max_length: The maximum length of the generated text
     :param prompt: The prompt to generate text from
     :return: The generated text
     """
@@ -13,13 +14,14 @@ def generate_text(prompt):
 
     # Use hugging face pipeline to load model onto GPU
     try:
-        pipe = pipeline("text-generation", model="TinyLlama/TinyLlama-1.1B-Chat-v1.0", device=0)
+        model_group = "TinyLlama"
+        model_name = "TinyLlama-1.1B-Chat-v1.0"
+        model = f'{model_group}/{model_name}'
+        pipe = pipeline("text-generation", model=model, device=0, max_length=max_length,
+                        truncation=True)
     except Exception as e:
         print(f"Pipeline died: {e}")
         raise e
-
-    # Ensure response does not exceed 2000 characters
-    pipe.model.config.max_length = 2000
 
     print("Pipeline loaded")
 
@@ -31,9 +33,6 @@ def generate_text(prompt):
         raise e
 
     print("Text generated")
-
-    # Cut response to 1000 characters
-    response = response[:1000]
 
     return response
 
